@@ -1,39 +1,97 @@
 const express = require('express');
-const auth = require('../../middleware/auth');
-const requireRole = require('../../middleware/requireRole');
-const Appeal = require('../../models/Appeal');
-const Image = require('../../models/Image');
+const auth = require('../middleware/auth');
+const Appeal = require('../models/Appeal');
+const Image = require('../models/Image');
 
 const router = express.Router();
 
 router.use(auth);
-router.use(requireRole('admin'));
 
-// ── GET /api/admin/appeals ────────────────────────────────────────────────────
-// Paginated appeal queue.
-// Query: ?status=pending|accepted|rejected  (default: pending)
-//        &page=  &limit=
+// ── POST /api/appeals ─────────────────────────────────────────────────────────
+// File an appeal against a flagged or blocked image.
+// Rules:
+//   - Image must belong to the current user
+//   - Image outcome must be 'flagged' or 'blocked'
+//   - No existing appeal on this image (unique index on imageId)
+//   - Justification required (min 20 chars — enforced by model)
 
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { status = 'pending', page = 1, limit = 20 } = req.query;
+    const { imageId, justification } = req.body;
+
+    if (!imageId || !justification) {
+      return res.status(400).json({ message: 'imageId and justification are required' });
+    }
+
+    // Verify image exists and belongs to this user
+    const image = await Image.findOne({ _id: imageId, userId: req.user._id });
+    if (!image) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+
+    // Only flagged or blocked images can be appealed
+    if (!['flagged', 'blocked'].includes(image.outcome)) {
+      return res.status(400).json({
+        message: `Cannot appeal an image with outcome '${image.outcome}'. Only flagged or blocked images are eligible.`,
+      });
+    }
+
+    // Block duplicate appeals (also enforced by unique index on Appeal.imageId)
+    if (image.appealId) {
+      return res.status(409).json({
+        message: 'An appeal has already been filed for this image',
+      });
+    }
+
+    // Create the appeal
+    const appeal = await Appeal.create({
+      imageId: image._id,
+      submissionId: image.submissionId,
+      userId: req.user._id,
+      justification,
+      status: 'pending',
+    });
+
+    // Denormalize appeal state onto the image for fast list queries
+    await Image.findByIdAndUpdate(image._id, {
+      appealId: appeal._id,
+      appealStatus: 'pending',
+    });
+
+    return res.status(201).json({ appeal });
+  } catch (err) {
+    // Duplicate key = second appeal attempt that slipped past the check
+    if (err.code === 11000) {
+      return res.status(409).json({ message: 'An appeal already exists for this image' });
+    }
+    console.error('[Appeals] POST error:', err);
+    return res.status(500).json({ message: 'Failed to file appeal' });
+  }
+});
+
+// ── GET /api/appeals/my ───────────────────────────────────────────────────────
+// All appeals filed by the current user, newest first.
+// NOTE: This route must be defined BEFORE /:id to avoid 'my' being treated as an id.
+
+router.get('/my', async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    const filter = {};
-    if (['pending', 'accepted', 'rejected'].includes(status)) {
+    const filter = { userId: req.user._id };
+    if (status && ['pending', 'accepted', 'rejected'].includes(status)) {
       filter.status = status;
     }
 
     const [appeals, total] = await Promise.all([
       Appeal.find(filter)
-        .sort({ createdAt: 1 }) // oldest first — work through the queue in order
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
-        .populate('userId', 'email createdAt')
-        .populate('imageId', 'originalFilename outcome storageUrl categoryResults verdictAt')
+        .populate('imageId', 'originalFilename outcome storageUrl categoryResults')
         .lean(),
       Appeal.countDocuments(filter),
     ]);
@@ -48,23 +106,22 @@ router.get('/', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[Admin/Appeals] GET queue error:', err);
-    return res.status(500).json({ message: 'Failed to fetch appeals queue' });
+    console.error('[Appeals] GET my error:', err);
+    return res.status(500).json({ message: 'Failed to fetch appeals' });
   }
 });
 
-// ── GET /api/admin/appeals/:id ────────────────────────────────────────────────
-// Full appeal detail for admin review.
+// ── GET /api/appeals/:id ──────────────────────────────────────────────────────
+// Single appeal detail — user can only view their own.
 
 router.get('/:id', async (req, res) => {
   try {
-    const appeal = await Appeal.findById(req.params.id)
-      .populate('userId', 'email createdAt')
+    const appeal = await Appeal.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    })
+      .populate('imageId', 'originalFilename outcome storageUrl categoryResults verdictAt')
       .populate('adminId', 'email')
-      .populate({
-        path: 'imageId',
-        populate: { path: 'policySnapshotId', select: 'snapshot createdAt' },
-      })
       .lean();
 
     if (!appeal) {
@@ -73,62 +130,8 @@ router.get('/:id', async (req, res) => {
 
     return res.json({ appeal });
   } catch (err) {
-    console.error('[Admin/Appeals] GET detail error:', err);
+    console.error('[Appeals] GET detail error:', err);
     return res.status(500).json({ message: 'Failed to fetch appeal' });
-  }
-});
-
-// ── PATCH /api/admin/appeals/:id ──────────────────────────────────────────────
-// Resolve an appeal: accept or reject.
-// Body: { decision: 'accepted' | 'rejected', adminResponse?: string }
-//
-// On acceptance → image outcome is overridden to 'approved' and
-//                 image.appealStatus synced to 'accepted'.
-// On rejection  → verdict stands, image.appealStatus synced to 'rejected'.
-
-router.patch('/:id', async (req, res) => {
-  try {
-    const { decision, adminResponse } = req.body;
-
-    if (!decision || !['accepted', 'rejected'].includes(decision)) {
-      return res.status(400).json({ message: "decision must be 'accepted' or 'rejected'" });
-    }
-
-    const appeal = await Appeal.findById(req.params.id);
-    if (!appeal) {
-      return res.status(404).json({ message: 'Appeal not found' });
-    }
-
-    if (appeal.status !== 'pending') {
-      return res.status(409).json({
-        message: `Appeal is already ${appeal.status} and cannot be resolved again`,
-      });
-    }
-
-    // Update the appeal document
-    appeal.status = decision;
-    appeal.adminId = req.user._id;
-    appeal.adminResponse = adminResponse || null;
-    appeal.resolvedAt = new Date();
-    await appeal.save();
-
-    // Sync appeal status back onto the Image document
-    const imageUpdate = { appealStatus: decision };
-
-    if (decision === 'accepted') {
-      // Override the verdict to approved
-      imageUpdate.outcome = 'approved';
-      imageUpdate.overriddenBy = req.user._id;
-      imageUpdate.overriddenAt = new Date();
-      imageUpdate.overrideNote = `Appeal accepted by admin. ${adminResponse || ''}`.trim();
-    }
-
-    await Image.findByIdAndUpdate(appeal.imageId, imageUpdate);
-
-    return res.json({ appeal });
-  } catch (err) {
-    console.error('[Admin/Appeals] PATCH error:', err);
-    return res.status(500).json({ message: 'Failed to resolve appeal' });
   }
 });
 
