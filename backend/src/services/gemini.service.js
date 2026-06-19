@@ -2,7 +2,36 @@ const { GoogleGenAI } = require('@google/genai');
 
 const MODEL = 'gemini-2.5-flash';
 
-// Category descriptions sent to Gemini so it knows what to look for
+// ── Gemini free-tier rate limiter ─────────────────────────────────────────────
+// Free tier allows 10 requests per minute (RPM).
+// We cap ourselves at 8 RPM (one request every 7.5 s) to leave headroom.
+// The queue drains sequentially — concurrent submissions wait their turn
+// rather than slamming the API and getting a 429.
+
+const RATE_LIMIT_MS = 7500; // minimum ms between consecutive Gemini calls
+let lastCallAt = 0;         // timestamp of the most recent call
+let pendingCall = Promise.resolve(); // serialises calls through a promise chain
+
+/**
+ * Wraps fn() so it waits until at least RATE_LIMIT_MS has elapsed since the
+ * previous call before executing. All callers queue behind a single chain, so
+ * even concurrent submissions are serialised safely.
+ */
+function rateLimited(fn) {
+  pendingCall = pendingCall.then(async () => {
+    const now = Date.now();
+    const wait = RATE_LIMIT_MS - (now - lastCallAt);
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    lastCallAt = Date.now();
+    return fn();
+  });
+  return pendingCall;
+}
+
+// ── Category descriptions ─────────────────────────────────────────────────────
+
 const CATEGORY_DESCRIPTIONS = {
   graphic_violence:
     'Depictions of physical harm, gore, or serious injury to humans or animals.',
@@ -30,11 +59,6 @@ function getClient() {
   return _client;
 }
 
-/**
- * Build the moderation prompt for the given enabled categories.
- * Disabled categories are excluded from the prompt but will be filled
- * with inconclusive stubs by the caller.
- */
 function buildPrompt(enabledCategories) {
   const categoryLines = enabledCategories
     .map((cat) => `- ${cat}: ${CATEGORY_DESCRIPTIONS[cat]}`)
@@ -71,56 +95,57 @@ ${enabledCategories.map((cat) => `  "${cat}": { "result": "...", "confidence": 0
 
 /**
  * Call Gemini 2.5 Flash with an image buffer and return the raw parsed JSON.
+ * All calls pass through the rate limiter — at most 8 per minute.
  *
- * @param {Buffer} imageBuffer - Raw image file buffer
- * @param {string} mimeType    - MIME type e.g. 'image/jpeg'
+ * @param {Buffer} imageBuffer       - Raw image file buffer
+ * @param {string} mimeType          - MIME type e.g. 'image/jpeg'
  * @param {string[]} enabledCategories - Category slugs that are currently enabled
  * @returns {Object} Parsed JSON object with one key per enabled category
  */
 async function callGemini(imageBuffer, mimeType, enabledCategories) {
-  const client = getClient();
+  return rateLimited(async () => {
+    const client = getClient();
+    const prompt = buildPrompt(enabledCategories);
 
-  const prompt = buildPrompt(enabledCategories);
-
-  const imagePart = {
-    inlineData: {
-      data: imageBuffer.toString('base64'),
-      mimeType,
-    },
-  };
-
-  const response = await client.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: 'user',
-        parts: [imagePart, { text: prompt }],
+    const imagePart = {
+      inlineData: {
+        data: imageBuffer.toString('base64'),
+        mimeType,
       },
-    ],
-    config: {
-      temperature: 0.1, // Low temperature — we want consistent, deterministic outputs
-    },
+    };
+
+    const response = await client.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          role: 'user',
+          parts: [imagePart, { text: prompt }],
+        },
+      ],
+      config: {
+        temperature: 0.1,
+      },
+    });
+
+    const rawText = response.text;
+    if (!rawText) {
+      throw new Error('Gemini returned an empty response');
+    }
+
+    const cleaned = rawText
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (err) {
+      throw new Error(`Gemini response was not valid JSON: ${cleaned.slice(0, 200)}`);
+    }
+
+    return parsed;
   });
-
-  const rawText = response.text;
-  if (!rawText) {
-    throw new Error('Gemini returned an empty response');
-  }
-
-  // Strip any accidental markdown fences Gemini might include despite instructions
-  const cleaned = rawText
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*/g, '')
-    .trim();
-
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (err) {
-    throw new Error(`Gemini response was not valid JSON: ${cleaned.slice(0, 200)}`);
-  }
-
-  return parsed;
 }
 
 module.exports = { callGemini, CATEGORY_DESCRIPTIONS };

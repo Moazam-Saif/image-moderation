@@ -2,7 +2,7 @@ const multer = require('multer');
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB per file
-const MAX_FILES_PER_REQUEST = 10;
+const MAX_FILES_PER_REQUEST = 5; // reduced from 10 to stay within Gemini free-tier RPM
 
 const upload = multer({
   storage: multer.memoryStorage(), // keep files in Buffer — no disk I/O needed

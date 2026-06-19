@@ -5,7 +5,7 @@ import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
 
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 10 * 1024 * 1024;
-const MAX_FILES = 10;
+const MAX_FILES = 5; // reduced from 10 — keeps us within Gemini free-tier RPM
 
 export default function Submit() {
   const navigate = useNavigate();
@@ -109,7 +109,11 @@ export default function Submit() {
             <><ImageIcon size={14} />Submit {files.length > 0 ? `${files.length} image${files.length > 1 ? 's' : ''}` : 'images'}</>
           )}
         </button>
-        {submitting && <p className="text-xs text-silver mt-2">AI is screening your images…</p>}
+        {submitting && (
+          <p className="text-xs text-silver mt-2">
+            AI is screening your images… this may take a few seconds per image.
+          </p>
+        )}
       </div>
     </div>
   );
