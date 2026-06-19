@@ -5,7 +5,7 @@
 
 @layer base {
   body {
-    @apply bg-cream text-bark font-sans antialiased;
+    @apply bg-parchment text-bark font-sans antialiased;
   }
   * {
     @apply border-fog;
@@ -13,48 +13,49 @@
 }
 
 @layer components {
-  /* Buttons */
+
+  /* ── Buttons ── */
   .btn-primary {
-    @apply bg-gold hover:bg-gold-dark text-white font-medium px-4 py-2 rounded transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-terra hover:bg-terra-dark text-white font-medium px-5 py-2.5 rounded-pill transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed tracking-wide text-sm;
   }
   .btn-secondary {
-    @apply bg-fog hover:bg-silver text-bark font-medium px-4 py-2 rounded transition-colors duration-150;
+    @apply bg-fog hover:bg-mist text-bark-mid font-medium px-5 py-2.5 rounded-pill transition-colors duration-150 tracking-wide text-sm;
   }
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded transition-colors duration-150;
+    @apply bg-red-700 hover:bg-red-800 text-white font-medium px-5 py-2.5 rounded-pill transition-colors duration-150 text-sm;
   }
   .btn-ghost {
-    @apply text-bark hover:text-gold hover:bg-fog px-3 py-2 rounded transition-colors duration-150;
+    @apply text-bark-mid hover:text-terra hover:bg-fog px-3 py-2 rounded-pill transition-colors duration-150 text-sm;
   }
 
-  /* Form elements */
+  /* ── Form elements ── */
   .input {
-    @apply w-full border border-fog bg-white rounded px-3 py-2 text-bark placeholder-silver focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-colors duration-150;
+    @apply w-full border border-fog bg-cream rounded-xl px-4 py-2.5 text-bark placeholder-silver focus:outline-none focus:border-sand focus:ring-1 focus:ring-sand transition-colors duration-150 text-sm;
   }
   .label {
-    @apply block text-sm font-medium text-bark mb-1;
+    @apply block text-xs font-semibold text-bark-mid mb-1.5 uppercase tracking-widest;
   }
 
-  /* Cards */
+  /* ── Cards ── */
   .card {
-    @apply bg-white border border-fog rounded-lg p-5 shadow-sm;
+    @apply bg-cream border border-fog rounded-2xl p-6 shadow-sm;
   }
 
-  /* Badges */
+  /* ── Badges ── */
   .badge-approved {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800;
+    @apply inline-flex items-center px-3 py-0.5 rounded-pill text-xs font-semibold bg-emerald-100 text-emerald-800 tracking-wide;
   }
   .badge-flagged {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800;
+    @apply inline-flex items-center px-3 py-0.5 rounded-pill text-xs font-semibold bg-amber-100 text-amber-800 tracking-wide;
   }
   .badge-blocked {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800;
+    @apply inline-flex items-center px-3 py-0.5 rounded-pill text-xs font-semibold bg-red-100 text-red-800 tracking-wide;
   }
   .badge-pending {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600;
+    @apply inline-flex items-center px-3 py-0.5 rounded-pill text-xs font-semibold bg-fog text-silver tracking-wide;
   }
 
-  /* Confidence bar */
+  /* ── Confidence bar ── */
   .confidence-bar {
     @apply h-1.5 rounded-full bg-fog overflow-hidden;
   }
@@ -62,20 +63,28 @@
     @apply h-full rounded-full transition-all duration-300;
   }
 
-  /* Table */
+  /* ── Table ── */
   .table-base {
     @apply w-full text-sm text-left;
   }
   .table-base thead {
-    @apply bg-fog text-bark font-semibold text-xs uppercase tracking-wide;
+    @apply bg-fog text-bark-mid font-semibold text-xs uppercase tracking-widest;
   }
   .table-base thead th {
-    @apply px-4 py-3;
+    @apply px-5 py-3.5;
   }
   .table-base tbody tr {
     @apply border-t border-fog hover:bg-fog/40 transition-colors;
   }
   .table-base tbody td {
-    @apply px-4 py-3;
+    @apply px-5 py-3.5;
+  }
+
+  /* ── Nav link ── */
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-pill text-sm font-medium transition-all duration-150 text-white/60 hover:text-white hover:bg-white/10;
+  }
+  .nav-link-active {
+    @apply bg-white/25 text-white;
   }
 }

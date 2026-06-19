@@ -16,19 +16,11 @@ import PolicyConfig from './pages/admin/PolicyConfig';
 import Analytics from './pages/admin/Analytics';
 
 function UserLayout({ children }) {
-  return (
-    <ProtectedRoute>
-      <Layout>{children}</Layout>
-    </ProtectedRoute>
-  );
+  return <ProtectedRoute><Layout>{children}</Layout></ProtectedRoute>;
 }
 
 function AdminLayout({ children }) {
-  return (
-    <ProtectedRoute requireAdmin>
-      <Layout>{children}</Layout>
-    </ProtectedRoute>
-  );
+  return <ProtectedRoute requireAdmin><Layout>{children}</Layout></ProtectedRoute>;
 }
 
 export default function App() {
@@ -36,24 +28,20 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* Public */}
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* User */}
-          <Route path="/dashboard"              element={<UserLayout><Dashboard /></UserLayout>} />
-          <Route path="/submit"                 element={<UserLayout><Submit /></UserLayout>} />
-          <Route path="/submissions"            element={<UserLayout><SubmissionList /></UserLayout>} />
-          <Route path="/submissions/:id"        element={<UserLayout><SubmissionDetail /></UserLayout>} />
-          <Route path="/appeal/:imageId"        element={<UserLayout><AppealForm /></UserLayout>} />
+          <Route path="/dashboard"           element={<UserLayout><Dashboard /></UserLayout>} />
+          <Route path="/submit"              element={<UserLayout><Submit /></UserLayout>} />
+          <Route path="/submissions"         element={<UserLayout><SubmissionList /></UserLayout>} />
+          <Route path="/submissions/:id"     element={<UserLayout><SubmissionDetail /></UserLayout>} />
+          <Route path="/appeal/:imageId"     element={<UserLayout><AppealForm /></UserLayout>} />
 
-          {/* Admin */}
-          <Route path="/admin/appeals"          element={<AdminLayout><AppealQueue /></AdminLayout>} />
-          <Route path="/admin/appeals/:id"      element={<AdminLayout><AppealReview /></AdminLayout>} />
-          <Route path="/admin/policies"         element={<AdminLayout><PolicyConfig /></AdminLayout>} />
-          <Route path="/admin/analytics"        element={<AdminLayout><Analytics /></AdminLayout>} />
+          <Route path="/admin/appeals"       element={<AdminLayout><AppealQueue /></AdminLayout>} />
+          <Route path="/admin/appeals/:id"   element={<AdminLayout><AppealReview /></AdminLayout>} />
+          <Route path="/admin/policies"      element={<AdminLayout><PolicyConfig /></AdminLayout>} />
+          <Route path="/admin/analytics"     element={<AdminLayout><Analytics /></AdminLayout>} />
 
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

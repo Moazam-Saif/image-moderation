@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -25,22 +24,28 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center px-4">
+    <div className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-bark rounded-lg flex items-center justify-center">
-            <Shield size={20} className="text-gold" />
+
+        {/* Capsule brand header */}
+        <div className="flex justify-center mb-10">
+          <div
+            className="bg-terra text-white flex items-center justify-center gap-3 font-semibold tracking-[0.2em] text-sm"
+            style={{ width: '220px', height: '60px', borderRadius: '100px' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            MODERATE AI
           </div>
-          <span className="text-xl font-semibold text-bark">ModerateAI</span>
         </div>
 
         <div className="card">
-          <h1 className="text-lg font-semibold text-bark mb-1">Sign in</h1>
-          <p className="text-sm text-silver mb-6">Enter your credentials to continue</p>
+          <h1 className="text-xl font-bold text-bark mb-1 tracking-tight">Sign in</h1>
+          <p className="text-xs text-silver mb-7 uppercase tracking-widest">Enter your credentials</p>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2 mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-4 py-3 mb-5">
               {error}
             </div>
           )}
@@ -48,37 +53,23 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">Email</label>
-              <input
-                type="email"
-                className="input"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-              />
+              <input type="email" className="input" placeholder="you@example.com"
+                value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div>
               <label className="label">Password</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
-              />
+              <input type="password" className="input" placeholder="••••••••"
+                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
             </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
+            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 justify-center flex">
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-sm text-silver mt-4">
+        <p className="text-center text-xs text-silver mt-5">
           No account?{' '}
-          <Link to="/register" className="text-gold hover:text-gold-dark font-medium">
-            Create one
-          </Link>
+          <Link to="/register" className="text-sand hover:text-sand-dark font-medium">Create one</Link>
         </p>
       </div>
     </div>

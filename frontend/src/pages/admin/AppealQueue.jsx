@@ -16,10 +16,7 @@ export default function AppealQueue() {
   useEffect(() => {
     setLoading(true);
     client.get(`/admin/appeals?status=${status}&page=${page}&limit=20`)
-      .then((res) => {
-        setAppeals(res.data.appeals || []);
-        setPagination(res.data.pagination || {});
-      })
+      .then((res) => { setAppeals(res.data.appeals || []); setPagination(res.data.pagination || {}); })
       .finally(() => setLoading(false));
   }, [status, page]);
 
@@ -27,22 +24,17 @@ export default function AppealQueue() {
 
   return (
     <div className="max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-bark">Appeals Queue</h1>
-        <p className="text-sm text-silver mt-1">Review and resolve user appeals</p>
+      <div className="mb-10">
+        <h1 className="text-4xl font-bold text-bark tracking-tight mb-1">Appeals Queue</h1>
+        <p className="text-silver text-sm">Review and resolve user appeals</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-fog">
         {STATUS_TABS.map((s) => (
-          <button
-            key={s}
-            onClick={() => switchTab(s)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors
-              ${status === s
-                ? 'border-gold text-gold'
-                : 'border-transparent text-silver hover:text-bark'}`}
-          >
+          <button key={s} onClick={() => switchTab(s)}
+            className={`px-5 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors
+              ${status === s ? 'border-terra text-terra' : 'border-transparent text-silver hover:text-bark'}`}>
             {s}
           </button>
         ))}
@@ -51,12 +43,10 @@ export default function AppealQueue() {
       <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="py-12 flex justify-center">
-            <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-terra border-t-transparent rounded-full animate-spin" />
           </div>
         ) : appeals.length === 0 ? (
-          <div className="py-12 text-center text-silver text-sm">
-            No {status} appeals.
-          </div>
+          <div className="py-12 text-center text-silver text-sm">No {status} appeals.</div>
         ) : (
           <table className="table-base">
             <thead>
@@ -72,33 +62,18 @@ export default function AppealQueue() {
             <tbody>
               {appeals.map((appeal) => (
                 <tr key={appeal._id}>
-                  <td className="text-xs text-silver truncate max-w-[160px]">
-                    {appeal.userId?.email ?? '—'}
-                  </td>
-                  <td className="font-mono text-xs truncate max-w-[160px]">
-                    {appeal.imageId?.originalFilename ?? '—'}
-                  </td>
-                  <td>
-                    {appeal.imageId?.outcome
-                      ? <OutcomeBadge outcome={appeal.imageId.outcome} />
-                      : '—'}
-                  </td>
-                  <td className="text-silver text-xs whitespace-nowrap">
-                    {new Date(appeal.createdAt).toLocaleString()}
-                  </td>
+                  <td className="text-xs text-silver truncate max-w-[140px]">{appeal.userId?.email ?? '—'}</td>
+                  <td className="font-mono text-xs truncate max-w-[140px]">{appeal.imageId?.originalFilename ?? '—'}</td>
+                  <td>{appeal.imageId?.outcome ? <OutcomeBadge outcome={appeal.imageId.outcome} /> : '—'}</td>
+                  <td className="text-silver text-xs whitespace-nowrap">{new Date(appeal.createdAt).toLocaleString()}</td>
                   <td>
                     <span className={`text-xs font-semibold capitalize
-                      ${appeal.status === 'pending' ? 'text-amber-600'
-                        : appeal.status === 'accepted' ? 'text-emerald-600'
-                        : 'text-red-600'}`}>
+                      ${appeal.status === 'pending' ? 'text-amber-600' : appeal.status === 'accepted' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {appeal.status}
                     </span>
                   </td>
                   <td>
-                    <Link
-                      to={`/admin/appeals/${appeal._id}`}
-                      className="text-xs text-gold hover:text-gold-dark whitespace-nowrap"
-                    >
+                    <Link to={`/admin/appeals/${appeal._id}`} className="text-xs text-sand hover:text-sand-dark whitespace-nowrap">
                       {appeal.status === 'pending' ? 'Review →' : 'View →'}
                     </Link>
                   </td>
@@ -108,7 +83,6 @@ export default function AppealQueue() {
           </table>
         )}
       </div>
-
       <Pagination page={pagination.page} pages={pagination.pages} onPageChange={setPage} />
     </div>
   );

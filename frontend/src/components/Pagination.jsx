@@ -22,13 +22,13 @@ export default function Pagination({ page, pages, onPageChange }) {
         }, [])
         .map((p, i) =>
           p === '...' ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-silver text-sm">…</span>
+            <span key={`e-${i}`} className="px-2 text-silver text-sm">…</span>
           ) : (
             <button
               key={p}
               onClick={() => onPageChange(p)}
-              className={`w-8 h-8 rounded text-sm font-medium transition-colors
-                ${p === page ? 'bg-gold text-white' : 'text-bark hover:bg-fog'}`}
+              className={`w-8 h-8 rounded-pill text-sm font-medium transition-colors
+                ${p === page ? 'bg-terra text-white' : 'text-bark-mid hover:bg-fog'}`}
             >
               {p}
             </button>

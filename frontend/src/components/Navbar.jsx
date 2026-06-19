@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, LogOut, Upload, Clock, BarChart2, Settings, FileCheck } from 'lucide-react';
+import { BarChart2, Upload, Clock, FileCheck, Settings, LogOut } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout, isAdmin } = useAuth();
@@ -15,8 +15,9 @@ export default function Navbar() {
   const isActive = (path) => location.pathname.startsWith(path);
 
   const userLinks = [
-    { to: '/submit',      label: 'Submit',  icon: Upload },
-    { to: '/submissions', label: 'History', icon: Clock },
+    { to: '/dashboard',   label: 'Dashboard', icon: BarChart2 },
+    { to: '/submit',      label: 'Submit',    icon: Upload },
+    { to: '/submissions', label: 'History',   icon: Clock },
   ];
 
   const adminLinks = [
@@ -28,56 +29,48 @@ export default function Navbar() {
   const links = isAdmin ? adminLinks : userLinks;
 
   return (
-    <nav className="bg-bark text-white w-64 min-h-screen flex flex-col fixed left-0 top-0 z-10">
-      {/* Logo */}
-      <Link to={isAdmin ? '/admin/analytics' : '/dashboard'} className="flex items-center gap-3 px-6 py-5 border-b border-bark-dark">
-        <Shield size={22} className="text-gold" />
-        <span className="font-semibold text-base tracking-wide">ModerateAI</span>
-      </Link>
+    <div
+      className="text-white flex flex-col py-8 px-6"
+      style={{
+        background: '#AC956A',
+        width: '220px',
+        minHeight: '42vh',
+        borderRadius: '0 70px 70px 0',
+      }}
+    >
+      {/* Section label */}
+      <p className="text-white/40 text-xs font-semibold tracking-[0.3em] uppercase mb-6">Menu</p>
 
       {/* Nav links */}
-      <div className="flex-1 px-3 py-4 space-y-1">
-        {!isAdmin && (
-          <Link
-            to="/dashboard"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors
-              ${isActive('/dashboard') ? 'bg-gold text-white' : 'text-white/70 hover:text-white hover:bg-bark-dark'}`}
-          >
-            <BarChart2 size={16} />
-            Dashboard
-          </Link>
-        )}
+      <nav className="flex flex-col gap-1 flex-1">
         {links.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors
-              ${isActive(to) ? 'bg-gold text-white' : 'text-white/70 hover:text-white hover:bg-bark-dark'}`}
+            className={`nav-link ${isActive(to) ? 'nav-link-active' : ''}`}
           >
-            <Icon size={16} />
+            <Icon size={14} strokeWidth={2} />
             {label}
           </Link>
         ))}
-      </div>
+      </nav>
 
-      {/* User footer */}
-      <div className="px-4 py-4 border-t border-bark-dark">
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Signed in as</div>
-        <div className="text-sm text-white/80 truncate mb-3">{user?.email}</div>
+      {/* Footer */}
+      <div className="mt-6 pt-5 border-t border-white/10">
+        <p className="text-white/40 text-xs truncate mb-3">{user?.email}</p>
         <div className="flex items-center justify-between">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
-            ${isAdmin ? 'bg-gold/20 text-gold' : 'bg-white/10 text-white/60'}`}>
+          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-pill bg-white/20 text-white">
             {user?.role?.toUpperCase()}
           </span>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors"
           >
-            <LogOut size={13} />
+            <LogOut size={12} />
             Logout
           </button>
         </div>
       </div>
-    </nav>
+    </div>
   );
 }

@@ -7,7 +7,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, check if a valid session cookie exists
   useEffect(() => {
     client.get('/auth/me')
       .then((res) => setUser(res.data.user))
