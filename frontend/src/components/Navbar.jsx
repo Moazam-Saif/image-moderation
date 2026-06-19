@@ -1,16 +1,10 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BarChart2, Upload, Clock, FileCheck, Settings, LogOut } from 'lucide-react';
+import { BarChart2, Upload, Clock, FileCheck, Settings } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, logout, isAdmin } = useAuth();
-  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const location = useLocation();
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
 
   const isActive = (path) => location.pathname.startsWith(path);
 
@@ -30,47 +24,80 @@ export default function Navbar() {
 
   return (
     <div
-      className="text-white flex flex-col py-8 px-6"
       style={{
         background: '#AC956A',
-        width: '220px',
+        width: '270px',
         minHeight: '42vh',
         borderRadius: '0 70px 70px 0',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '28px 0',
       }}
     >
-      {/* Section label */}
-      <p className="text-white/40 text-xs font-semibold tracking-[0.3em] uppercase mb-6">Menu</p>
+      <p style={{
+        color: 'rgba(44,36,22,0.5)',
+        fontSize: '10px',
+        fontWeight: 600,
+        letterSpacing: '0.3em',
+        textTransform: 'uppercase',
+        paddingLeft: '30px',
+        marginBottom: '20px',
+      }}>
+        Menu
+      </p>
 
-      {/* Nav links */}
-      <nav className="flex flex-col gap-1 flex-1">
-        {links.map(({ to, label, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className={`nav-link ${isActive(to) ? 'nav-link-active' : ''}`}
-          >
-            <Icon size={14} strokeWidth={2} />
-            {label}
-          </Link>
-        ))}
+      <nav style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        gap: '4px',
+        padding: '0 14px',
+      }}>
+        {links.map(({ to, label, icon: Icon }) => {
+          const active = isActive(to);
+          return (
+            <Link
+              key={to}
+              to={to}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '14px 8px',
+                borderRadius: '20px',
+                textDecoration: 'none',
+                flex: 1,
+                transition: 'all 0.15s ease',
+                background: active ? 'rgba(255,255,255,0.28)' : 'transparent',
+                border: active ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                if (!active) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <Icon
+                size={18}
+                strokeWidth={active ? 2.4 : 2}
+                style={{ color: active ? '#2c2416' : 'rgba(44,36,22,0.75)' }}
+              />
+              <span style={{
+                fontSize: '10px',
+                fontWeight: active ? 700 : 600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: active ? '#2c2416' : 'rgba(44,36,22,0.7)',
+              }}>
+                {label}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
-
-      {/* Footer */}
-      <div className="mt-6 pt-5 border-t border-white/10">
-        <p className="text-white/40 text-xs truncate mb-3">{user?.email}</p>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-pill bg-white/20 text-white">
-            {user?.role?.toUpperCase()}
-          </span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white transition-colors"
-          >
-            <LogOut size={12} />
-            Logout
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

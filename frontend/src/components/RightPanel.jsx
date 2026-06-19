@@ -11,56 +11,43 @@ export default function RightPanel() {
     navigate('/login');
   };
 
-  // Generate initials from email
   const initials = user?.email
     ? user.email.slice(0, 2).toUpperCase()
     : '??';
 
   return (
     <div
-      className="bg-mist flex flex-col items-center justify-center gap-6"
+      className="flex flex-col items-center justify-center gap-6"
       style={{
+        background: '#d9d9d9',
         width: '80px',
         height: '42vh',
         borderRadius: '100px 0 0 100px',
       }}
     >
-      {/* User avatar */}
       <div
-        className="flex flex-col items-center gap-1.5"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+        style={{ background: '#a56c6c' }}
         title={user?.email}
       >
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-          style={{ background: '#AC956A' }}
-        >
-          {initials}
-        </div>
-        <span
-          className="text-bark-mid font-medium"
-          style={{
-            fontSize: '9px',
-            writingMode: 'vertical-rl',
-            textOrientation: 'mixed',
-            letterSpacing: '0.15em',
-            maxHeight: '80px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {user?.email?.split('@')[0]}
-        </span>
+        {initials}
       </div>
 
-      {/* Divider */}
-      <div className="w-6 h-px bg-bark-mid/20" />
+      <div className="w-6 h-px" style={{ background: 'rgba(165,108,108,0.3)' }} />
 
-      {/* Logout button */}
       <button
         onClick={handleLogout}
         title="Logout"
-        className="w-9 h-9 rounded-full flex items-center justify-center text-bark-mid/50 hover:text-terra hover:bg-white/60 transition-all duration-150"
+        className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-150"
+        style={{ color: '#a56c6c' }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(165,108,108,0.12)';
+          e.currentTarget.style.color = '#8a5353';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = '#a56c6c';
+        }}
       >
         <LogOut size={15} />
       </button>

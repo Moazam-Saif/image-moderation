@@ -1,5 +1,5 @@
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+dns.setDefaultResultOrder('ipv4first');
 
 require('dotenv').config();
 const path = require('path');
@@ -9,6 +9,7 @@ const cors = require('cors');
 
 const connectDB = require('./config/db');
 const seedPolicies = require('./utils/seed');
+const seedAdmin = require('./utils/seedAdmin');
 
 // Routes
 const authRoutes = require('./routes/auth.routes');
@@ -71,6 +72,7 @@ const PORT = process.env.PORT || 5000;
 async function start() {
   await connectDB();
   await seedPolicies();
+  await seedAdmin();
   app.listen(PORT, () => {
     console.log(`[Server] Running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
   });
