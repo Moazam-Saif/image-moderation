@@ -1,7 +1,20 @@
+import { useEffect, useRef } from 'react';
 import Navbar from './Navbar';
 import RightPanel from './RightPanel';
 
 export default function Layout({ children }) {
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!headerRef.current) return;
+      const opacity = Math.max(0.25, 1 - window.scrollY / 110);
+      headerRef.current.style.opacity = opacity;
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div style={{ minHeight: '100vh', background: '#f4f1ea', position: 'relative' }}>
 
@@ -16,7 +29,7 @@ export default function Layout({ children }) {
         justifyContent: 'center',
         pointerEvents: 'none',
       }}>
-        <div style={{
+        <div ref={headerRef} style={{
           background: '#a56c6c',
           color: 'white',
           display: 'flex',
@@ -26,11 +39,15 @@ export default function Layout({ children }) {
           fontWeight: 600,
           letterSpacing: '0.2em',
           fontSize: '14px',
-          width: '480px',
+          width: '470px',
           height: '60px',
           borderRadius: '0 0 100px 100px',
           pointerEvents: 'auto',
+          transition: 'opacity 0.1s ease',
         }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
           MODERATE AI
         </div>
       </div>
