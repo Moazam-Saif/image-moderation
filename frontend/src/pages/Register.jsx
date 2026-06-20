@@ -31,13 +31,17 @@ export default function Register() {
 
         <div className="flex justify-center mb-10">
           <div
-            className="bg-terra text-white flex items-center justify-center gap-3 font-semibold tracking-[0.2em] text-sm"
-            style={{ width: '220px', height: '60px', borderRadius: '100px' }}
+            className="bg-terra text-white flex items-center justify-center"
+            style={{ width: '260px', height: '60px', borderRadius: '100px' }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-            MODERATE AI
+            <span style={{
+              fontFamily: '"Fredoka", sans-serif',
+              fontWeight: 600,
+              letterSpacing: '0.15em',
+              fontSize: '22px',
+            }}>
+              CONTENT LENS AI
+            </span>
           </div>
         </div>
 
