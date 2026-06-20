@@ -1,10 +1,9 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
 const auth = require('../middleware/auth');
 const { upload } = require('../middleware/upload');
 const { moderateImage } = require('../services/moderation.service');
+const { uploadImageBuffer } = require('../services/cloudinary.service');
 
 const Policy = require('../models/Policy');
 const PolicySnapshot = require('../models/PolicySnapshot');
@@ -15,22 +14,6 @@ const router = express.Router();
 
 // All submission routes require authentication
 router.use(auth);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Save uploaded buffer to local disk under /uploads (simple local storage).
-// In production this would be replaced by Cloudinary / S3 upload.
-const UPLOAD_DIR = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-function saveFileToDisk(buffer, originalname, mimetype) {
-  const ext = originalname.split('.').pop().toLowerCase();
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-  const filepath = path.join(UPLOAD_DIR, filename);
-  fs.writeFileSync(filepath, buffer);
-  // Return a URL-style path the frontend can use to fetch the image
-  return `/uploads/${filename}`;
-}
 
 // ── POST /api/submissions ─────────────────────────────────────────────────────
 // Accept one or more images, screen each independently, save verdicts.
@@ -84,15 +67,30 @@ router.post('/', upload.array('images', 10), async (req, res) => {
         errorOccurred = true;
       }
 
-      // Save file to disk after screening (don't store blocked content if you prefer —
-      // currently storing all for admin review purposes)
-      const storageUrl = saveFileToDisk(file.buffer, file.originalname, file.mimetype);
+      // Upload to Cloudinary after screening — stores all images (approved, flagged,
+      // and blocked) so admins can review blocked content during appeal resolution.
+      let storageUrl, cloudinaryPublicId;
+      try {
+        const uploadResult = await uploadImageBuffer(
+          file.buffer,
+          file.mimetype,
+          req.user._id.toString()
+        );
+        storageUrl = uploadResult.url;
+        cloudinaryPublicId = uploadResult.publicId;
+      } catch (err) {
+        console.error(`[Cloudinary] Upload failed for ${file.originalname}:`, err.message);
+        // If the image can't be stored, we can't show it later — fail this image's record
+        // but still continue processing the rest of the batch.
+        continue;
+      }
 
       const imageDoc = await Image.create({
         submissionId: submission._id,
         userId: req.user._id,
         originalFilename: file.originalname,
         storageUrl,
+        cloudinaryPublicId,
         mimeType: file.mimetype,
         fileSizeBytes: file.size,
         outcome,

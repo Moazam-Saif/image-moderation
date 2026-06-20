@@ -38,7 +38,8 @@ const imageSchema = new mongoose.Schema(
 
     // File metadata
     originalFilename: { type: String, required: true },
-    storageUrl: { type: String, required: true },
+    storageUrl: { type: String, required: true },      // Cloudinary secure_url
+    cloudinaryPublicId: { type: String, required: true }, // needed to delete/manage the asset later
     mimeType: { type: String, required: true },
     fileSizeBytes: { type: Number, required: true },
 
