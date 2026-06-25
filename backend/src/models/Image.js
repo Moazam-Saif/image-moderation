@@ -66,6 +66,10 @@ const imageSchema = new mongoose.Schema(
     },
     verdictAt: { type: Date, default: null },
 
+    // Set when Gemini fails to return a valid result — signals to the user
+    // that the outcome is a safe fallback, not a real AI verdict.
+    processingError: { type: Boolean, default: false },
+
     // Appeal state — denormalized here to avoid joins on list views
     // One appeal max per image (enforced by unique index on Appeal.imageId)
     appealId: {

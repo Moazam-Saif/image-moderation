@@ -2,32 +2,43 @@ const { GoogleGenAI } = require('@google/genai');
 
 const MODEL = 'gemini-2.5-flash';
 
-// ── Gemini free-tier rate limiter ─────────────────────────────────────────────
-// Free tier allows 10 requests per minute (RPM).
-// We cap ourselves at 8 RPM (one request every 7.5 s) to leave headroom.
-// The queue drains sequentially — concurrent submissions wait their turn
-// rather than slamming the API and getting a 429.
+// ── Vertex AI client (initialised once) ──────────────────────────────────────
+// Auth: GCP_SERVICE_ACCOUNT_JSON env var holds the full service account JSON
+// string. We parse it, create a GoogleAuth credential from it, and pass it
+// to the SDK. No files on disk, no GOOGLE_APPLICATION_CREDENTIALS needed.
 
-const RATE_LIMIT_MS = 7500; // minimum ms between consecutive Gemini calls
-let lastCallAt = 0;         // timestamp of the most recent call
-let pendingCall = Promise.resolve(); // serialises calls through a promise chain
+let _client = null;
 
-/**
- * Wraps fn() so it waits until at least RATE_LIMIT_MS has elapsed since the
- * previous call before executing. All callers queue behind a single chain, so
- * even concurrent submissions are serialised safely.
- */
-function rateLimited(fn) {
-  pendingCall = pendingCall.then(async () => {
-    const now = Date.now();
-    const wait = RATE_LIMIT_MS - (now - lastCallAt);
-    if (wait > 0) {
-      await new Promise((resolve) => setTimeout(resolve, wait));
-    }
-    lastCallAt = Date.now();
-    return fn();
+function getClient() {
+  if (_client) return _client;
+
+  const rawJson = process.env.GCP_SERVICE_ACCOUNT_JSON;
+  if (!rawJson) throw new Error('GCP_SERVICE_ACCOUNT_JSON is not set');
+
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+
+  let serviceAccountKey;
+  try {
+    serviceAccountKey = JSON.parse(rawJson);
+  } catch (e) {
+    throw new Error('GCP_SERVICE_ACCOUNT_JSON is not valid JSON');
+  }
+
+  // project_id is already inside the service account JSON — no separate env var needed
+  const project = serviceAccountKey.project_id;
+  if (!project) throw new Error('project_id not found in GCP_SERVICE_ACCOUNT_JSON');
+
+  _client = new GoogleGenAI({
+    vertexai: true,
+    project,
+    location,
+    googleAuthOptions: {
+      credentials: serviceAccountKey,
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    },
   });
-  return pendingCall;
+
+  return _client;
 }
 
 // ── Category descriptions ─────────────────────────────────────────────────────
@@ -46,18 +57,6 @@ const CATEGORY_DESCRIPTIONS = {
   harassment_humiliation:
     'Imagery intended to degrade, threaten, or publicly humiliate an identifiable individual.',
 };
-
-let _client = null;
-
-function getClient() {
-  if (!_client) {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not set in environment variables');
-    }
-    _client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  }
-  return _client;
-}
 
 function buildPrompt(enabledCategories) {
   const categoryLines = enabledCategories
@@ -94,58 +93,55 @@ ${enabledCategories.map((cat) => `  "${cat}": { "result": "...", "confidence": 0
 }
 
 /**
- * Call Gemini 2.5 Flash with an image buffer and return the raw parsed JSON.
- * All calls pass through the rate limiter — at most 8 per minute.
+ * Call Gemini 2.5 Flash on Vertex AI with an image buffer.
+ * Vertex AI has high RPM quotas — calls are fired directly with no rate limiter.
  *
- * @param {Buffer} imageBuffer       - Raw image file buffer
- * @param {string} mimeType          - MIME type e.g. 'image/jpeg'
- * @param {string[]} enabledCategories - Category slugs that are currently enabled
- * @returns {Object} Parsed JSON object with one key per enabled category
+ * @param {Buffer}   imageBuffer        - Raw image bytes (from multer memoryStorage)
+ * @param {string}   mimeType           - e.g. 'image/jpeg'
+ * @param {string[]} enabledCategories  - Category slugs currently enabled in policy
+ * @returns {Object} Parsed JSON verdict object
  */
 async function callGemini(imageBuffer, mimeType, enabledCategories) {
-  return rateLimited(async () => {
-    const client = getClient();
-    const prompt = buildPrompt(enabledCategories);
+  const client = getClient();
+  const prompt = buildPrompt(enabledCategories);
 
-    const imagePart = {
-      inlineData: {
-        data: imageBuffer.toString('base64'),
-        mimeType,
+  const imagePart = {
+    inlineData: {
+      data: imageBuffer.toString('base64'),
+      mimeType,
+    },
+  };
+
+  const response = await client.models.generateContent({
+    model: MODEL,
+    contents: [
+      {
+        role: 'user',
+        parts: [imagePart, { text: prompt }],
       },
-    };
-
-    const response = await client.models.generateContent({
-      model: MODEL,
-      contents: [
-        {
-          role: 'user',
-          parts: [imagePart, { text: prompt }],
-        },
-      ],
-      config: {
-        temperature: 0.1,
-      },
-    });
-
-    const rawText = response.text;
-    if (!rawText) {
-      throw new Error('Gemini returned an empty response');
-    }
-
-    const cleaned = rawText
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch (err) {
-      throw new Error(`Gemini response was not valid JSON: ${cleaned.slice(0, 200)}`);
-    }
-
-    return parsed;
+    ],
+    config: {
+      temperature: 0.1,
+    },
   });
+
+  const rawText = response.text;
+  if (!rawText) throw new Error('Gemini returned an empty response');
+
+  // Strip accidental markdown fences despite instructions
+  const cleaned = rawText
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (err) {
+    throw new Error(`Gemini response was not valid JSON: ${cleaned.slice(0, 200)}`);
+  }
+
+  return parsed;
 }
 
 module.exports = { callGemini, CATEGORY_DESCRIPTIONS };

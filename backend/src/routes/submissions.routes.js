@@ -47,63 +47,61 @@ router.post('/', upload.array('images', 10), async (req, res) => {
       imageCount: req.files.length,
     });
 
-    // 3. Screen each image independently
-    const imageResults = [];
+    // 3. Screen all images in parallel — Vertex AI has high RPM quotas,
+    //    no rate limiting needed. Gemini + Cloudinary run concurrently per image.
+    const imageResults = (
+      await Promise.all(
+        req.files.map(async (file) => {
+          let outcome = 'pending';
+          let categoryResults = [];
+          let errorOccurred = false;
 
-    for (const file of req.files) {
-      let outcome = 'pending';
-      let categoryResults = [];
-      let errorOccurred = false;
+          try {
+            const result = await moderateImage(file.buffer, file.mimetype, policies);
+            outcome = result.outcome;
+            categoryResults = result.categoryResults;
+          } catch (err) {
+            console.error(`[Moderation] Error screening ${file.originalname}:`, err.message);
+            outcome = 'flagged'; // conservative fallback: flag for human review
+            categoryResults = [];
+            errorOccurred = true;
+          }
 
-      try {
-        const result = await moderateImage(file.buffer, file.mimetype, policies);
-        outcome = result.outcome;
-        categoryResults = result.categoryResults;
-      } catch (err) {
-        console.error(`[Moderation] Error screening ${file.originalname}:`, err.message);
-        // Don't fail the whole submission — mark this image as failed gracefully
-        outcome = 'flagged'; // conservative fallback: flag for human review
-        categoryResults = [];
-        errorOccurred = true;
-      }
+          // Upload to Cloudinary concurrently with other images
+          let storageUrl, cloudinaryPublicId;
+          try {
+            const uploadResult = await uploadImageBuffer(
+              file.buffer,
+              file.mimetype,
+              req.user._id.toString()
+            );
+            storageUrl = uploadResult.url;
+            cloudinaryPublicId = uploadResult.publicId;
+          } catch (err) {
+            console.error(`[Cloudinary] Upload failed for ${file.originalname}:`, err.message);
+            return null; // skip this image — can't store without a URL
+          }
 
-      // Upload to Cloudinary after screening — stores all images (approved, flagged,
-      // and blocked) so admins can review blocked content during appeal resolution.
-      let storageUrl, cloudinaryPublicId;
-      try {
-        const uploadResult = await uploadImageBuffer(
-          file.buffer,
-          file.mimetype,
-          req.user._id.toString()
-        );
-        storageUrl = uploadResult.url;
-        cloudinaryPublicId = uploadResult.publicId;
-      } catch (err) {
-        console.error(`[Cloudinary] Upload failed for ${file.originalname}:`, err.message);
-        // If the image can't be stored, we can't show it later — fail this image's record
-        // but still continue processing the rest of the batch.
-        continue;
-      }
-
-      const imageDoc = await Image.create({
-        submissionId: submission._id,
-        userId: req.user._id,
-        originalFilename: file.originalname,
-        storageUrl,
-        cloudinaryPublicId,
-        mimeType: file.mimetype,
-        fileSizeBytes: file.size,
-        outcome,
-        policySnapshotId: snapshot._id,
-        categoryResults,
-        verdictAt: new Date(),
-        ...(errorOccurred && {
-          overrideNote: 'AI screening error — flagged for manual review',
-        }),
-      });
-
-      imageResults.push(imageDoc);
-    }
+          return Image.create({
+            submissionId: submission._id,
+            userId: req.user._id,
+            originalFilename: file.originalname,
+            storageUrl,
+            cloudinaryPublicId,
+            mimeType: file.mimetype,
+            fileSizeBytes: file.size,
+            outcome,
+            policySnapshotId: snapshot._id,
+            categoryResults,
+            verdictAt: new Date(),
+            processingError: errorOccurred,
+            ...(errorOccurred && {
+              overrideNote: 'AI screening error — flagged for manual review',
+            }),
+          });
+        })
+      )
+    ).filter(Boolean); // remove nulls from failed Cloudinary uploads
 
     // 4. Mark submission complete
     await Submission.findByIdAndUpdate(submission._id, { status: 'completed' });

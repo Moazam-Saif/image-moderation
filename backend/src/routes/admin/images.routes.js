@@ -8,6 +8,42 @@ const router = express.Router();
 router.use(auth);
 router.use(requireRole('admin'));
 
+// ── GET /api/admin/images/flagged ────────────────────────────────────────────
+// Flagged image review queue — images awaiting admin decision.
+// These entered the queue because a flag_review category triggered.
+// Admin resolves each via PATCH /:id/verdict (approve or block).
+// Must be defined BEFORE /:id routes to avoid 'flagged' being treated as an id.
+
+router.get('/flagged', async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter = { outcome: 'flagged' };
+
+    const [images, total] = await Promise.all([
+      Image.find(filter)
+        .sort({ createdAt: 1 }) // oldest first — work through the queue in order
+        .skip(skip)
+        .limit(limitNum)
+        .populate('userId', 'email')
+        .populate('submissionId', 'createdAt')
+        .lean(),
+      Image.countDocuments(filter),
+    ]);
+
+    return res.json({
+      images,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+    });
+  } catch (err) {
+    console.error('[Admin/Images] GET flagged queue error:', err);
+    return res.status(500).json({ message: 'Failed to fetch flagged queue' });
+  }
+});
+
 // ── PATCH /api/admin/images/:id/verdict ───────────────────────────────────────
 // Direct manual verdict override — bypasses appeal workflow entirely.
 // Used when an admin spots an error without a user filing an appeal.

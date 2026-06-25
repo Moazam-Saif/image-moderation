@@ -29,10 +29,21 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    // Only flagged or blocked images can be appealed
-    if (!['flagged', 'blocked'].includes(image.outcome)) {
+    // Only blocked images can be appealed.
+    // Flagged images are already in the admin review queue — the admin will
+    // decide on them directly. An appeal is only for when the AI auto-blocked
+    // content the user believes was incorrectly screened.
+    if (image.outcome !== 'blocked') {
       return res.status(400).json({
-        message: `Cannot appeal an image with outcome '${image.outcome}'. Only flagged or blocked images are eligible.`,
+        message: `Cannot appeal an image with outcome '${image.outcome}'. Only blocked images are eligible for appeal.`,
+      });
+    }
+
+    // If an admin has already reviewed and decided on this image (overriddenBy is set),
+    // the decision is final — no appeal allowed.
+    if (image.overriddenBy) {
+      return res.status(400).json({
+        message: 'This image was reviewed and blocked by an administrator. The decision cannot be appealed.',
       });
     }
 
