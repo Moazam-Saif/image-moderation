@@ -89,7 +89,8 @@ development.
 | `NODE_ENV` | `development` or `production`. |
 | `MONGO_URI` | MongoDB Atlas connection string, including the database name (e.g. `.../content_moderation?retryWrites=true&w=majority`). |
 | `JWT_SECRET` | Long random string (32+ chars) used to sign auth tokens. |
-| `GEMINI_API_KEY` | API key from Google AI Studio, used for image screening. |
+| `GCP_SERVICE_ACCOUNT_JSON` | Full contents of your GCP service account JSON file, as a single-line string. The `project_id` is read automatically from inside it. |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AI region, e.g. `us-central1`. |
 | `CLOUDINARY_CLOUD_NAME` | From your Cloudinary dashboard. |
 | `CLOUDINARY_API_KEY` | From your Cloudinary dashboard. |
 | `CLOUDINARY_API_SECRET` | From your Cloudinary dashboard. |
@@ -141,17 +142,15 @@ token pair. This is XSS-resistant (JavaScript cannot read the cookie) and
 CSRF-resistant (SameSite blocks cross-origin submission), while keeping the
 auth flow simple and auditable for a project of this scope.
 
-**Rate limiting against the Gemini free-tier RPM cap.** Gemini 2.5 Flash's
-free tier allows roughly 10 requests per minute. `gemini.service.js` enforces
-a self-imposed floor of 7.5 seconds between consecutive calls (~8 RPM) via a
-promise-chain serializer: every call appends to a shared queue and only fires
-once the previous call's gap has elapsed, regardless of how many submissions
-are in flight concurrently. This avoids `429` rate-limit errors entirely
-rather than retrying after the fact. As a direct consequence, the maximum
-images per submission is capped at **5** — a 5-image batch takes at
-most ~37.5 seconds worst case, which is an acceptable, honest trade-off for
-free-tier usage rather than risking throttling or ToS-adjacent burst
-behavior.
+**Parallel image screening via Vertex AI.** Gemini 2.5 Flash is called through
+GCP Vertex AI, which has high RPM quotas far beyond what a per-submission
+batch would hit. All images in a submission are screened concurrently via
+`Promise.all()` — no rate limiter, no inter-request delay. A 5-image
+submission fires all 5 Gemini calls simultaneously and resolves as soon as
+the slowest one finishes, rather than waiting 7.5 seconds between each.
+Authentication uses a service account JSON key passed directly as an
+environment variable, so no files need to exist on disk and the container
+stays stateless.
 
 **Resilience against Gemini free-tier instability.** The free tier can also
 return malformed JSON or fail intermittently even within the rate limit. The
