@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BarChart2, Upload, Clock, FileCheck, Settings } from 'lucide-react';
+import { BarChart2, Upload, Clock, FileCheck, Settings, Flag } from 'lucide-react';
 
 export default function Navbar() {
   const { isAdmin } = useAuth();
@@ -15,6 +15,7 @@ export default function Navbar() {
   ];
 
   const adminLinks = [
+    { to: '/admin/flagged',   label: 'Flagged',   icon: Flag },
     { to: '/admin/appeals',   label: 'Appeals',   icon: FileCheck },
     { to: '/admin/policies',  label: 'Policies',  icon: Settings },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
