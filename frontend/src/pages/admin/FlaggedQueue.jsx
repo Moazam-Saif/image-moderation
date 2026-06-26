@@ -4,7 +4,7 @@ import OutcomeBadge from '../../components/OutcomeBadge';
 import CategoryResults from '../../components/CategoryResults';
 import Pagination from '../../components/Pagination';
 import ImageLightbox from '../../components/ImageLightbox';
-import { CheckCircle, XCircle, ChevronDown, ChevronUp, ZoomIn } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronDown, ChevronUp, Expand } from 'lucide-react';
 
 function ImageReviewCard({ image, onResolved }) {
   const [expanded, setExpanded] = useState(false);
@@ -46,14 +46,14 @@ function ImageReviewCard({ image, onResolved }) {
             <img
               src={image.storageUrl}
               alt={image.originalFilename}
-              className="w-14 h-14 object-cover rounded border border-fog cursor-zoom-in"
+              className="w-14 h-14 object-cover rounded border border-fog cursor-pointer"
               onClick={(e) => { e.stopPropagation(); setLightbox(true); }}
             />
             <div
-              className="absolute inset-0 bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-zoom-in"
+              className="absolute inset-0 bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
               onClick={(e) => { e.stopPropagation(); setLightbox(true); }}
             >
-              <ZoomIn size={16} className="text-white" />
+              <Expand size={16} className="text-white" />
             </div>
           </div>
           <div>
