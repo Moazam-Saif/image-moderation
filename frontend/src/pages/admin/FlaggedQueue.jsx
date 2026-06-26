@@ -3,13 +3,15 @@ import client from '../../api/client';
 import OutcomeBadge from '../../components/OutcomeBadge';
 import CategoryResults from '../../components/CategoryResults';
 import Pagination from '../../components/Pagination';
-import { CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import ImageLightbox from '../../components/ImageLightbox';
+import { CheckCircle, XCircle, ChevronDown, ChevronUp, ZoomIn } from 'lucide-react';
 
 function ImageReviewCard({ image, onResolved }) {
   const [expanded, setExpanded] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [lightbox, setLightbox] = useState(false);
 
   const resolve = async (outcome) => {
     setResolving(true);
@@ -25,17 +27,35 @@ function ImageReviewCard({ image, onResolved }) {
 
   return (
     <div className="card mb-4">
+      {lightbox && (
+        <ImageLightbox
+          src={image.storageUrl}
+          alt={image.originalFilename}
+          onClose={() => setLightbox(false)}
+        />
+      )}
+
       {/* Header row */}
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setExpanded((v) => !v)}
       >
         <div className="flex items-center gap-4">
-          <img
-            src={image.storageUrl}
-            alt={image.originalFilename}
-            className="w-14 h-14 object-cover rounded border border-fog"
-          />
+          {/* Thumbnail — click opens lightbox, not the expand toggle */}
+          <div className="relative group">
+            <img
+              src={image.storageUrl}
+              alt={image.originalFilename}
+              className="w-14 h-14 object-cover rounded border border-fog cursor-zoom-in"
+              onClick={(e) => { e.stopPropagation(); setLightbox(true); }}
+            />
+            <div
+              className="absolute inset-0 bg-black/40 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-zoom-in"
+              onClick={(e) => { e.stopPropagation(); setLightbox(true); }}
+            >
+              <ZoomIn size={16} className="text-white" />
+            </div>
+          </div>
           <div>
             <p className="font-mono text-sm font-medium text-bark">{image.originalFilename}</p>
             <p className="text-xs text-silver mt-0.5">
