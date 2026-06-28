@@ -11,8 +11,8 @@ const submissionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    // Overall status of this submission batch
-    // 'processing' while AI is still running, 'completed' when all images are done
+    /* Overall status of this submission batch
+     'processing' while AI is still running, 'completed' when all images are done*/
     status: {
       type: String,
       enum: ['processing', 'completed', 'failed'],
